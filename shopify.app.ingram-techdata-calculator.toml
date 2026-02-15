@@ -1,0 +1,31 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "0bb25aa6a5146c2cecbd4bc9a205bfe4"
+name = "Ingram-Techdata-calculator"
+application_url = "https://ingram-techdata-shopify-app-us-three.vercel.app"
+embedded = true
+
+[webhooks]
+api_version = "2026-01"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_all_cart_transforms,read_cart_transforms,read_delivery_customizations,read_fulfillment_constraint_rules,read_inventory_shipments,read_metaobject_definitions,read_metaobjects,read_order_edits,read_orders,read_product_feeds,read_product_listings,read_products,read_shipping,read_third_party_fulfillment_orders,write_cart_transforms,write_delivery_customizations,write_fulfillment_constraint_rules,write_inventory_shipments,write_metaobject_definitions,write_metaobjects,write_order_edits,write_orders,write_product_feeds,write_product_listings,write_products,write_shipping,write_third_party_fulfillment_orders"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://ingram-techdata-shopify-app-us-three.vercel.app/auth/callback"
+]
+
+[build]
+automatically_update_urls_on_dev = true
