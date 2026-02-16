@@ -2,7 +2,7 @@
 
 client_id = "0bb25aa6a5146c2cecbd4bc9a205bfe4"
 name = "Ingram-Techdata-calculator"
-application_url = "https://ingram-techdata-shopify-app-us-three.vercel.app"
+application_url = "https://ingram-tech-calculator.vercel.app"
 embedded = true
 
 [webhooks]
@@ -24,7 +24,7 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://ingram-techdata-shopify-app-us-three.vercel.app/auth/callback"
+  "https://https://ingram-tech-calculator.vercel.app/auth/callback"
 ]
 
 [build]
