@@ -4,8 +4,7 @@ import { createTtlCache } from "app/utils/ttl-cache.server";
 import { Td_SynnexCredential } from "@prisma/client";
 
 const FREIGHT_URL = "https://ec.us.tdsynnex.com/SynnexXML/FreightQuote";
-const SANDBOX_FREIGHT_URL =
-  "https://ec.us.tdsynnex.com/sandbox/SynnexXML/FreightQuote";
+const SANDBOX_FREIGHT_URL = "https://testec.synnex.com/SynnexXML/FreightQuote";
 
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
 const FREIGHT_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes

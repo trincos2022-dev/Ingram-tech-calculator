@@ -8,7 +8,7 @@
 import prisma from "../db.server";
 
 // Carrier types supported by the system
-export type CarrierType = "INGRAM" | "TECHDATA";
+export type CarrierType = "INGRAM" | "TECHDATA" | "UNIFIED";
 
 // Unified rate log data structure
 export type CarrierRateLogData = {
@@ -55,7 +55,9 @@ export function saveCarrierRateLog(data: CarrierRateLogData): void {
         requestType: data.requestType,
         cartItemCount: data.cartItemCount,
         cartSkus: JSON.stringify(data.cartSkus),
-        vendorPartNums: data.vendorPartNums ? JSON.stringify(data.vendorPartNums) : null,
+        vendorPartNums: data.vendorPartNums
+          ? JSON.stringify(data.vendorPartNums)
+          : null,
         shipToCity: data.shipToCity,
         shipToState: data.shipToState,
         shipToZip: data.shipToZip,
@@ -65,13 +67,20 @@ export function saveCarrierRateLog(data: CarrierRateLogData): void {
         ratesReturned: data.ratesReturned,
         ratesData: data.ratesData ? truncateJson(data.ratesData, 5000) : null,
         errorMessage: data.errorMessage,
-        errorDetails: data.errorDetails ? truncateJson(data.errorDetails, 2000) : null,
-        vendorRawResponse: data.vendorRawResponse ? truncateJson(data.vendorRawResponse, 8000) : null,
+        errorDetails: data.errorDetails
+          ? truncateJson(data.errorDetails, 2000)
+          : null,
+        vendorRawResponse: data.vendorRawResponse
+          ? truncateJson(data.vendorRawResponse, 8000)
+          : null,
         durationMs: data.durationMs,
       },
     })
     .catch((err) => {
-      console.error(`[${data.carrierType}] Failed to save carrier rate log:`, err);
+      console.error(
+        `[${data.carrierType}] Failed to save carrier rate log:`,
+        err,
+      );
     });
 }
 
@@ -90,7 +99,7 @@ export type RateLogFilters = {
  */
 export async function getIngramRateLogs(
   shopDomain: string,
-  filters?: RateLogFilters
+  filters?: RateLogFilters,
 ) {
   return prisma.carrierRateRequestLog.findMany({
     where: {
@@ -114,7 +123,7 @@ export async function getIngramRateLogs(
  */
 export async function getTechDataRateLogs(
   shopDomain: string,
-  filters?: RateLogFilters
+  filters?: RateLogFilters,
 ) {
   return prisma.carrierRateRequestLog.findMany({
     where: {
@@ -138,7 +147,7 @@ export async function getTechDataRateLogs(
  */
 export async function getAllCarrierRateLogs(
   shopDomain: string,
-  filters?: RateLogFilters & { carrierType?: CarrierType }
+  filters?: RateLogFilters & { carrierType?: CarrierType },
 ) {
   return prisma.carrierRateRequestLog.findMany({
     where: {
@@ -173,7 +182,7 @@ export async function getRateLogStats(
   shopDomain: string,
   carrierType?: CarrierType,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
 ) {
   const where = {
     shopDomain,
@@ -186,10 +195,18 @@ export async function getRateLogStats(
 
   const [total, successful, errors, noRates, noMapping] = await Promise.all([
     prisma.carrierRateRequestLog.count({ where }),
-    prisma.carrierRateRequestLog.count({ where: { ...where, status: "success" } }),
-    prisma.carrierRateRequestLog.count({ where: { ...where, status: "error" } }),
-    prisma.carrierRateRequestLog.count({ where: { ...where, status: "no_rates" } }),
-    prisma.carrierRateRequestLog.count({ where: { ...where, status: "no_mapping" } }),
+    prisma.carrierRateRequestLog.count({
+      where: { ...where, status: "success" },
+    }),
+    prisma.carrierRateRequestLog.count({
+      where: { ...where, status: "error" },
+    }),
+    prisma.carrierRateRequestLog.count({
+      where: { ...where, status: "no_rates" },
+    }),
+    prisma.carrierRateRequestLog.count({
+      where: { ...where, status: "no_mapping" },
+    }),
   ]);
 
   return {
@@ -207,7 +224,7 @@ export async function getRateLogStats(
  */
 export async function deleteOldRateLogs(
   olderThanDays: number,
-  carrierType?: CarrierType
+  carrierType?: CarrierType,
 ) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);

@@ -4,5 +4,10 @@
       "path": "/api/cron/sync-products",
       "schedule": "0 3 * * 1"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
 }
