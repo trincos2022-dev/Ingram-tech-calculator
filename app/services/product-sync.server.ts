@@ -61,7 +61,7 @@ export async function startProductSync(shopDomain: string) {
     // Fire cron endpoint in background — don't await ✅
     const appUrl = process.env.APP_URL ?? process.env.SHOPIFY_APP_URL;
     if (appUrl) {
-      fetch(`${appUrl}/cron/product-sync`, {
+      fetch(`${appUrl}/api/cron/sync-products`, {
         method: "GET",
         headers: {
           authorization: `Bearer ${process.env.CRON_SECRET ?? ""}`,
