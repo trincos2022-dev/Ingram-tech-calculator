@@ -119,7 +119,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         );
 
         // Insert in batches of 1000
-        const BATCH_SIZE = 1000;
+        const BATCH_SIZE = 100000;
         let inserted = 0;
 
         for (let i = 0; i < mappingsToInsert.length; i += BATCH_SIZE) {
