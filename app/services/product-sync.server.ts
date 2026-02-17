@@ -4,7 +4,7 @@ import { getSupabaseClient } from "./supabase.server";
 export type ProductSyncJobStatus = "queued" | "running" | "success" | "failed";
 
 // Mark jobs stuck for more than 10 minutes as failed
-const STALE_JOB_THRESHOLD_MS = 10 * 60 * 1000;
+const STALE_JOB_THRESHOLD_MS = 30 * 60 * 1000;
 
 export async function getLatestProductSyncJob(shopDomain: string) {
   try {
@@ -75,9 +75,7 @@ export async function startProductSync(shopDomain: string) {
     });
   } catch (err) {
     console.error("Failed to start product sync:", err);
-    throw new Error(
-      err instanceof Error ? err.message : "Product sync failed"
-    );
+    throw new Error(err instanceof Error ? err.message : "Product sync failed");
   }
 }
 
@@ -113,7 +111,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
       const validRows = (data ?? []).filter(
         (row): row is { price_vendor_part: string; price_part_nbr: string } =>
-          Boolean(row.price_vendor_part) && Boolean(row.price_part_nbr)
+          Boolean(row.price_vendor_part) && Boolean(row.price_part_nbr),
       );
 
       if (validRows.length === 0) {
@@ -121,7 +119,9 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       }
 
       allRows.push(...validRows);
-      console.log(`[Product Sync] Fetched ${allRows.length}/${totalCount} rows from Supabase`);
+      console.log(
+        `[Product Sync] Fetched ${allRows.length}/${totalCount} rows from Supabase`,
+      );
 
       if (validRows.length < PAGE_SIZE) {
         break;
@@ -131,7 +131,9 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     }
 
     const rows = allRows;
-    console.log(`[Product Sync] Total fetched: ${rows.length} rows from Supabase`);
+    console.log(
+      `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
+    );
 
     // Dedupe by SKU (keep first occurrence)
     const uniqueMappings = new Map<string, string>();
@@ -161,11 +163,13 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     let processed = 0;
 
     for (let i = 0; i < mappingsArray.length; i += BATCH_SIZE) {
-      const batch = mappingsArray.slice(i, i + BATCH_SIZE).map(([sku, ingramPartNumber]) => ({
-        shopDomain,
-        sku,
-        ingramPartNumber,
-      }));
+      const batch = mappingsArray
+        .slice(i, i + BATCH_SIZE)
+        .map(([sku, ingramPartNumber]) => ({
+          shopDomain,
+          sku,
+          ingramPartNumber,
+        }));
 
       await prisma.productMapping.createMany({
         data: batch,
@@ -192,7 +196,9 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       },
     });
 
-    console.log(`[Product Sync] Completed: ${processed} mappings synced for ${shopDomain}`);
+    console.log(
+      `[Product Sync] Completed: ${processed} mappings synced for ${shopDomain}`,
+    );
   } catch (error) {
     console.error("[Product Sync] Failed:", error);
     const message =
