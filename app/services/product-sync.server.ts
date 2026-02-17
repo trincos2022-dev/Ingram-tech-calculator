@@ -158,7 +158,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     });
 
     // Bulk insert in batches
-    const BATCH_SIZE = 1000;
+    const BATCH_SIZE = 100000;
     const mappingsArray = Array.from(uniqueMappings.entries());
     let processed = 0;
 
