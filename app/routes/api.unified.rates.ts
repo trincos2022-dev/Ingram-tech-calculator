@@ -662,7 +662,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shipToState: payload.shipToAddress.state,
         shipToZip: payload.shipToAddress.postalCode,
         shipToCountry: payload.shipToAddress.countryCode,
-        status: "error",
+        status: "no_mapping",
         errorMessage: `SKU(s) not found in vendor database: ${unmappedSkus.join(", ")}`,
         durationMs: Date.now() - startTime,
       });
@@ -787,7 +787,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shipToState: payload.shipToAddress.state,
         shipToZip: payload.shipToAddress.postalCode,
         shipToCountry: payload.shipToAddress.countryCode,
-        status: "error",
+        status: "no_rates",
         errorMessage: `Shipping provider(s) ${failedVendors.join(", ")} failed to return rates`,
         durationMs: Date.now() - startTime,
       });
@@ -838,7 +838,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           shipToState: payload.shipToAddress.state,
           shipToZip: payload.shipToAddress.postalCode,
           shipToCountry: payload.shipToAddress.countryCode,
-          status: "error",
+          status: "no_rates",
           errorMessage: "No matching shipping methods found between vendors",
           durationMs: Date.now() - startTime,
         });

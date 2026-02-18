@@ -428,7 +428,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   // Fetch fallback rate settings
-  const fallbackRateSettings = await getFallbackRateSettings(session.shop);
+  const fallbackRateSettings = await getFallbackRateSettings(session.shop,"UNIFIED");
 
   return {
     tdcredentials,
