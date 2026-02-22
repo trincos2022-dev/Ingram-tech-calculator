@@ -507,7 +507,7 @@ async function getTechDataRates(
         formatTechDataRateForShopify(rate, currency),
       );
     }
- console.log("enabledCodes", shopifyRates);
+    console.log("enabledCodes", shopifyRates);
     console.log(
       `[UNIFIED][TECHDATA][${correlationId}] Returning ${shopifyRates.length} rates`,
     );
@@ -667,10 +667,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         durationMs: Date.now() - startTime,
       });
 
-      // Return error for BOTH carrier service AND direct API
       if (carrierShop) {
-        // For Shopify, return empty rates array (Shopify handles this gracefully)
-        return Response.json({ rates: [] }, { status: 200 });
+        const fallbackRates = await getFallbackRateSettings(
+          payload.shopDomain,
+          "UNIFIED",
+        );
+        return Response.json({ rates: fallbackRates }, { status: 200 });
       }
 
       return Response.json(
@@ -793,9 +795,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       if (carrierShop) {
-        const fallbackRates = await getFallbackRates(
+        const fallbackRates = await getFallbackRateSettings(
           payload.shopDomain,
-          carrierCurrency,
+          "UNIFIED",
         );
         return Response.json({ rates: fallbackRates }, { status: 200 });
       }
@@ -844,9 +846,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
 
         if (carrierShop) {
-          const fallbackRates = await getFallbackRates(
+          const fallbackRates = await getFallbackRateSettings(
             payload.shopDomain,
-            carrierCurrency,
+            "UNIFIED",
           );
           return Response.json({ rates: fallbackRates }, { status: 200 });
         }
@@ -940,9 +942,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
 
     if (carrierShop) {
-      const fallbackRates = await getFallbackRates(
+      const fallbackRates = await getFallbackRateSettings(
         payload.shopDomain,
-        carrierCurrency,
+        "UNIFIED",
       );
       return Response.json({ rates: fallbackRates }, { status: 200 });
     }
