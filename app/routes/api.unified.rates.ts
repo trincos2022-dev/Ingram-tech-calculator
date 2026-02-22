@@ -667,10 +667,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         durationMs: Date.now() - startTime,
       });
 
+      // Return error for BOTH carrier service AND direct API
       if (carrierShop) {
-        const fallbackRates = await getFallbackRateSettings(
+        const fallbackRates = await getFallbackRates(
           payload.shopDomain,
-          "UNIFIED",
+          carrierCurrency,
         );
         return Response.json({ rates: fallbackRates }, { status: 200 });
       }
@@ -795,9 +796,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
 
       if (carrierShop) {
-        const fallbackRates = await getFallbackRateSettings(
+        const fallbackRates = await getFallbackRates(
           payload.shopDomain,
-          "UNIFIED",
+          carrierCurrency,
         );
         return Response.json({ rates: fallbackRates }, { status: 200 });
       }
@@ -846,9 +847,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
 
         if (carrierShop) {
-          const fallbackRates = await getFallbackRateSettings(
+          const fallbackRates = await getFallbackRates(
             payload.shopDomain,
-            "UNIFIED",
+            carrierCurrency,
           );
           return Response.json({ rates: fallbackRates }, { status: 200 });
         }
@@ -942,9 +943,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
 
     if (carrierShop) {
-      const fallbackRates = await getFallbackRateSettings(
+      const fallbackRates = await getFallbackRates(
         payload.shopDomain,
-        "UNIFIED",
+        carrierCurrency,
       );
       return Response.json({ rates: fallbackRates }, { status: 200 });
     }
