@@ -6,7 +6,7 @@ export type FallbackRateSettings = {
   shopDomain: string;
   carrierType?: CarrierType;
   enabled: boolean;
-  price: number;
+  price?: number | undefined; // Optional - if not provided, only title will be shown
   title: string;
   description: string;
 };
@@ -104,7 +104,7 @@ export async function saveFallbackRateSettings(
     },
     update: {
       enabled: data.enabled,
-      price: data.price,
+      price: data.price !== undefined ? data.price : undefined,
       title: data.title,
       description: data.description,
       updatedAt: new Date(),
@@ -143,6 +143,7 @@ export async function getAllCarrierFallbackRates(
 
 /**
  * Format fallback rate for Shopify carrier service response
+ * If price is not provided (null/undefined/0), only the title will be shown without a price
  */
 export function formatFallbackRateForShopify(
   settings: FallbackRateSettings,
@@ -154,8 +155,14 @@ export function formatFallbackRateForShopify(
   description: string;
   currency: string;
 } {
-  // Shopify expects price in cents
-  const priceInCents = Math.round(settings.price * 100);
+  // Get the price value, defaulting to 0 if not provided
+  const priceValue = settings.price ?? 0;
+
+  // Check if price is valid (not null, undefined, or 0)
+  const hasValidPrice = priceValue > 0;
+
+  // If no valid price, return title-only rate with 0 price
+  const priceInCents = hasValidPrice ? Math.round(priceValue * 100) : 0;
 
   return {
     service_name: settings.title,

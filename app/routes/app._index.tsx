@@ -428,7 +428,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   // Fetch fallback rate settings
-  const fallbackRateSettings = await getFallbackRateSettings(session.shop,"UNIFIED");
+  const fallbackRateSettings = await getFallbackRateSettings(
+    session.shop,
+    "UNIFIED",
+  );
 
   return {
     tdcredentials,
@@ -1447,7 +1450,9 @@ export default function Index() {
 
                 <div>
                   <label htmlFor="fallbackPrice">
-                    <s-text>Fallback price ($)</s-text>
+                    <s-text>
+                      Fallback price ($) - Leave empty for title only
+                    </s-text>
                   </label>
                   <input
                     id="fallbackPrice"
@@ -1455,13 +1460,15 @@ export default function Index() {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={fallbackForm.price}
-                    onChange={(event) =>
+                    value={fallbackForm.price ?? ""}
+                    placeholder="Leave empty to show title only"
+                    onChange={(event) => {
+                      const value = event.target.value;
                       setFallbackForm((prev) => ({
                         ...prev,
-                        price: parseFloat(event.target.value || "999"),
-                      }))
-                    }
+                        price: value === "" ? null : parseFloat(value),
+                      }));
+                    }}
                     style={{
                       width: "100%",
                       padding: "0.5rem",
@@ -1514,7 +1521,9 @@ export default function Index() {
                     Preview at checkout:
                   </small>
                   <div style={{ marginTop: "0.5rem", fontWeight: 500 }}>
-                    {fallbackForm.title} - ${fallbackForm.price.toFixed(2)}
+                    {fallbackForm.price != null && fallbackForm.price > 0
+                      ? `${fallbackForm.title} - $${Number(fallbackForm.price).toFixed(2)}`
+                      : fallbackForm.title}
                   </div>
                   <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
                     {fallbackForm.description}

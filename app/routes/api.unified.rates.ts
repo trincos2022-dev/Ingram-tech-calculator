@@ -521,26 +521,18 @@ async function getTechDataRates(
   }
 }
 
-// Get fallback rates for both vendors
+// Get fallback rates for unified carrier
 async function getFallbackRates(
   shopDomain: string,
   currency: string,
 ): Promise<ShopifyRate[]> {
-  const [ingramSettings, techDataSettings] = await Promise.all([
-    getFallbackRateSettings(shopDomain, "INGRAM"),
-    getFallbackRateSettings(shopDomain, "TECHDATA"),
-  ]);
+  // Retrieve unified fallback rate settings (same as admin UI saves)
+  const unifiedSettings = await getFallbackRateSettings(shopDomain, "UNIFIED");
 
   const fallbackRates: ShopifyRate[] = [];
 
-  if (ingramSettings.enabled) {
-    fallbackRates.push(formatFallbackRateForShopify(ingramSettings, currency));
-  }
-
-  if (techDataSettings.enabled) {
-    fallbackRates.push(
-      formatFallbackRateForShopify(techDataSettings, currency),
-    );
+  if (unifiedSettings.enabled) {
+    fallbackRates.push(formatFallbackRateForShopify(unifiedSettings, currency));
   }
 
   return fallbackRates;
