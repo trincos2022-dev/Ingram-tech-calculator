@@ -99,7 +99,7 @@ export async function getIngramMappingsForSkus(
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("final_product_table_us")
-    .select("price_vendor_part,price_part_nbr")
+    .select("id,price_vendor_part,price_part_nbr")
     .in("price_vendor_part", missingSkus);
 
   if (error) {
