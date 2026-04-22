@@ -12,15 +12,17 @@ import { getSupabaseClient } from "../services/supabase.server";
 
 // Verify the request is from Vercel Cron
 function verifyCronRequest(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
+  const authHeader = request.headers.get("authorization") || "";
   const cronSecret = process.env.CRON_SECRET;
 
-  // If CRON_SECRET is set, verify it
   if (cronSecret) {
-    return authHeader === `Bearer ${cronSecret}`;
+    const isValidAuth =
+      authHeader === `Bearer ${cronSecret}` || authHeader === cronSecret;
+    if (isValidAuth) {
+      return true;
+    }
   }
 
-  // Also allow Vercel's internal cron requests
   const isVercelCron = request.headers.get("x-vercel-cron") === "true";
   return isVercelCron;
 }
