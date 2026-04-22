@@ -5,7 +5,6 @@
  * It syncs all product mappings from Supabase to the local database
  * for all shops that have Ingram credentials configured.
  */
-
 import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { getSupabaseClient } from "../services/supabase.server";
