@@ -89,7 +89,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
     // Fetch all mappings from Supabase with pagination (default limit is 1000)
     const supabase = getSupabaseClient();
-    const PAGE_SIZE = 5000;
+    const PAGE_SIZE = 10000;
     const allRows: {
       id: number;
       price_vendor_part: string;
