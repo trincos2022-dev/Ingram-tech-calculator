@@ -147,18 +147,10 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
     );
 
-    // Dedupe by SKU (keep first occurrence)
-    const uniqueMappings = new Map<
-      number,
-      { sku: string; ingramPartNumber: string }
-    >();
+    // Dedupe by SKU (keep last occurrence)
+    const uniqueMappings = new Map<string, string>();
     for (const row of rows) {
-      if (!uniqueMappings.has(row.id)) {
-        uniqueMappings.set(row.id, {
-          sku: row.price_vendor_part,
-          ingramPartNumber: row.price_part_nbr,
-        });
-      }
+      uniqueMappings.set(row.price_vendor_part, row.price_part_nbr);
     }
 
     const total = uniqueMappings.size;
@@ -183,7 +175,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     for (let i = 0; i < mappingsArray.length; i += BATCH_SIZE) {
       const batch = mappingsArray
         .slice(i, i + BATCH_SIZE)
-        .map(([_id, { sku, ingramPartNumber }]) => ({
+        .map(([sku, ingramPartNumber]) => ({
           shopDomain,
           sku,
           ingramPartNumber,
