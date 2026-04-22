@@ -15,14 +15,12 @@ function verifyCronRequest(request: Request): boolean {
   const authHeader = request.headers.get("authorization") || "";
   const cronSecret = process.env.CRON_SECRET;
 
+  // If CRON_SECRET is set, verify it
   if (cronSecret) {
-    const isValidAuth =
-      authHeader === `Bearer ${cronSecret}` || authHeader === cronSecret;
-    if (isValidAuth) {
-      return true;
-    }
+    return authHeader === `Bearer ${cronSecret}`;
   }
 
+  // Also allow Vercel's internal cron requests
   const isVercelCron = request.headers.get("x-vercel-cron") === "true";
   return isVercelCron;
 }
