@@ -135,10 +135,12 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
     );
 
-    // Dedupe by SKU (keep last occurrence)
+    // Dedupe by SKU (keep first occurrence)
     const uniqueMappings = new Map<string, string>();
     for (const row of rows) {
-      uniqueMappings.set(row.price_vendor_part, row.price_part_nbr);
+      if (!uniqueMappings.has(row.price_vendor_part)) {
+        uniqueMappings.set(row.price_vendor_part, row.price_part_nbr);
+      }
     }
 
     const total = uniqueMappings.size;
