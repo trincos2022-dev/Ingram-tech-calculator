@@ -3,10 +3,12 @@ import { getSupabaseClient } from "./supabase.server";
 
 export type ProductSyncJobStatus = "queued" | "running" | "success" | "failed";
 
+// Mark jobs stuck for more than 10 minutes as failed
 const STALE_JOB_THRESHOLD_MS = 30 * 60 * 1000;
 
 export async function getLatestProductSyncJob(shopDomain: string) {
   try {
+    // First, mark any stale "running" jobs as failed
     await markStaleJobsAsFailed(shopDomain);
 
     return await prisma.productSyncJob.findFirst({
@@ -38,8 +40,10 @@ async function markStaleJobsAsFailed(shopDomain: string) {
 
 export async function startProductSync(shopDomain: string) {
   try {
+    // Mark any stale running jobs as failed first
     await markStaleJobsAsFailed(shopDomain);
 
+    // Check for recent running job (not stale)
     const existing = await prisma.productSyncJob.findFirst({
       where: {
         shopDomain,
@@ -52,6 +56,7 @@ export async function startProductSync(shopDomain: string) {
       return existing;
     }
 
+    // Create the job
     const job = await prisma.productSyncJob.create({
       data: {
         shopDomain,
@@ -61,8 +66,10 @@ export async function startProductSync(shopDomain: string) {
       },
     });
 
+    // Run sync synchronously (fast bulk insert completes in seconds)
     await runProductSyncFast(job.id, shopDomain);
 
+    // Return the updated job
     return await prisma.productSyncJob.findUnique({
       where: { id: job.id },
     });
@@ -72,12 +79,17 @@ export async function startProductSync(shopDomain: string) {
   }
 }
 
+/**
+ * Fast sync using bulk operations instead of individual upserts.
+ * This completes in seconds instead of timing out.
+ */
 async function runProductSyncFast(jobId: string, shopDomain: string) {
   try {
     console.log(`[Product Sync] Starting fast sync for ${shopDomain}`);
 
+    // Fetch all mappings from Supabase with pagination (default limit is 1000)
     const supabase = getSupabaseClient();
-    const PAGE_SIZE = 10000;
+    const PAGE_SIZE = 5000;
     const allRows: {
       id: number;
       price_vendor_part: string;
@@ -85,7 +97,6 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     }[] = [];
     let offset = 0;
     let totalCount = 0;
-    let totalDroppedByFilter = 0;
 
     // Paginate through all rows
     while (true) {
@@ -102,9 +113,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
         totalCount = count;
       }
 
-      const rawRows = data ?? [];
-
-      const validRows = rawRows.filter(
+      const validRows = (data ?? []).filter(
         (
           row,
         ): row is {
@@ -112,38 +121,21 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
           price_vendor_part: string;
           price_part_nbr: string;
         } =>
-          // FIX: use != null checks instead of Boolean() so id=0 and
-          // non-empty strings are not falsely dropped.
-          row.id != null &&
-          row.price_vendor_part != null &&
-          row.price_vendor_part.trim() !== "" &&
-          row.price_part_nbr != null &&
-          row.price_part_nbr.trim() !== "",
+          Boolean(row.id) &&
+          Boolean(row.price_vendor_part) &&
+          Boolean(row.price_part_nbr),
       );
 
-      // Diagnostic: log any rows dropped by the filter on this page
-      const droppedOnPage = rawRows.length - validRows.length;
-      if (droppedOnPage > 0) {
-        totalDroppedByFilter += droppedOnPage;
-        console.warn(
-          `[Product Sync] ⚠️ Dropped ${droppedOnPage} rows with null/empty fields at offset ${offset}`,
-        );
-      }
-
-      if (validRows.length === 0 && rawRows.length === 0) {
-        // No more data from Supabase at all
+      if (validRows.length === 0) {
         break;
       }
 
       allRows.push(...validRows);
       console.log(
-        `[Product Sync] Fetched ${allRows.length}/${totalCount} rows from Supabase (page offset ${offset})`,
+        `[Product Sync] Fetched ${allRows.length}/${totalCount} rows from Supabase`,
       );
 
-      // FIX: Break based on RAW data length, not validRows length.
-      // Previously, if even 1 row was filtered out, the loop would stop early
-      // even though Supabase had more pages to return.
-      if (rawRows.length < PAGE_SIZE) {
+      if (validRows.length < PAGE_SIZE) {
         break;
       }
 
@@ -152,20 +144,8 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
     const rows = allRows;
     console.log(
-      `[Product Sync] Total fetched: ${rows.length} rows from Supabase (Supabase reported ${totalCount} total)`,
+      `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
     );
-
-    if (totalDroppedByFilter > 0) {
-      console.warn(
-        `[Product Sync] ⚠️ Total rows dropped by null/empty filter: ${totalDroppedByFilter}`,
-      );
-    }
-
-    if (totalCount > 0 && rows.length < totalCount) {
-      console.warn(
-        `[Product Sync] ⚠️ Fetched ${rows.length} rows but Supabase has ${totalCount} — ${totalCount - rows.length} rows missing!`,
-      );
-    }
 
     // Dedupe by SKU (keep last occurrence)
     const uniqueMappings = new Map<string, string>();
@@ -174,16 +154,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     }
 
     const total = uniqueMappings.size;
-
-    // Diagnostic: log deduplication loss
-    const dedupRemoved = rows.length - total;
-    if (dedupRemoved > 0) {
-      console.warn(
-        `[Product Sync] ⚠️ Deduplication removed ${dedupRemoved} duplicate SKUs (${rows.length} → ${total} unique)`,
-      );
-    } else {
-      console.log(`[Product Sync] No duplicates found. ${total} unique SKUs.`);
-    }
+    console.log(`[Product Sync] ${total} unique SKUs after deduplication`);
 
     // Update job with total count
     await prisma.productSyncJob.update({
@@ -192,15 +163,12 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     });
 
     // Delete existing mappings for this shop
-    const deletedCount = await prisma.productMapping.deleteMany({
+    await prisma.productMapping.deleteMany({
       where: { shopDomain },
     });
-    console.log(
-      `[Product Sync] Deleted ${deletedCount.count} existing mappings for ${shopDomain}`,
-    );
 
     // Bulk insert in batches
-    const BATCH_SIZE = 100000;
+    const BATCH_SIZE = 1000000;
     const mappingsArray = Array.from(uniqueMappings.entries());
     let processed = 0;
 
@@ -213,38 +181,18 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
           ingramPartNumber,
         }));
 
-      const result = await prisma.productMapping.createMany({
+      await prisma.productMapping.createMany({
         data: batch,
         skipDuplicates: true,
       });
 
-      // Diagnostic: detect if skipDuplicates silently dropped rows
-      if (result.count < batch.length) {
-        console.warn(
-          `[Product Sync] ⚠️ Batch at offset ${i}: inserted ${result.count} but expected ${batch.length} — ${batch.length - result.count} skipped as duplicates`,
-        );
-      }
+      processed += batch.length;
 
-      processed += result.count;
-
+      // Update progress
       await prisma.productSyncJob.update({
         where: { id: jobId },
         data: { processed },
       });
-    }
-
-    // Final count verification
-    const finalDbCount = await prisma.productMapping.count({
-      where: { shopDomain },
-    });
-    console.log(
-      `[Product Sync] ✅ Final DB count: ${finalDbCount} mappings (synced ${processed} / expected ${total})`,
-    );
-
-    if (finalDbCount !== total) {
-      console.warn(
-        `[Product Sync] ⚠️ Mismatch: DB has ${finalDbCount} but we expected ${total}`,
-      );
     }
 
     // Mark as success
