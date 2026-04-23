@@ -4,7 +4,7 @@ import { getSupabaseClient } from "./supabase.server";
 export type ProductSyncJobStatus = "queued" | "running" | "success" | "failed";
 
 // Mark jobs stuck for more than 10 minutes as failed
-const STALE_JOB_THRESHOLD_MS = 30 * 60 * 1000;
+const STALE_JOB_THRESHOLD_MS = 10 * 60 * 1000;
 
 export async function getLatestProductSyncJob(shopDomain: string) {
   try {
@@ -89,12 +89,8 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
     // Fetch all mappings from Supabase with pagination (default limit is 1000)
     const supabase = getSupabaseClient();
-    const PAGE_SIZE = 5000;
-    const allRows: {
-      id: number;
-      price_vendor_part: string;
-      price_part_nbr: string;
-    }[] = [];
+    const PAGE_SIZE = 10000;
+    const allRows: { price_vendor_part: string; price_part_nbr: string }[] = [];
     let offset = 0;
     let totalCount = 0;
 
@@ -102,7 +98,8 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     while (true) {
       const { data, error, count } = await supabase
         .from("final_product_table_us")
-        .select("id,price_vendor_part,price_part_nbr", { count: "exact" })
+        .select("price_vendor_part,price_part_nbr", { count: "exact" })
+        .order("price_vendor_part", { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);
 
       if (error) {
@@ -114,13 +111,8 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       }
 
       const validRows = (data ?? []).filter(
-        (
-          row,
-        ): row is {
-          id: number;
-          price_vendor_part: string;
-          price_part_nbr: string;
-        } => Boolean(row.price_vendor_part) && Boolean(row.price_part_nbr),
+        (row): row is { price_vendor_part: string; price_part_nbr: string } =>
+          Boolean(row.price_vendor_part) && Boolean(row.price_part_nbr),
       );
 
       if (validRows.length === 0) {
@@ -144,15 +136,16 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
     );
 
-    //mapping data
-    const mappingsArray = rows.map((row) => ({
-      shopDomain,
-      sku: row.price_vendor_part,
-      ingramPartNumber: row.price_part_nbr,
-    }));
+    // Dedupe by SKU (keep first occurrence)
+    const uniqueMappings = new Map<string, string>();
+    for (const row of rows) {
+      if (!uniqueMappings.has(row.price_vendor_part)) {
+        uniqueMappings.set(row.price_vendor_part, row.price_part_nbr);
+      }
+    }
 
-    const total = mappingsArray.length;
-    console.log(`[Product Sync] ${total} unique rows mappings`);
+    const total = uniqueMappings.size;
+    console.log(`[Product Sync] ${total} unique SKUs after deduplication`);
 
     // Update job with total count
     await prisma.productSyncJob.update({
@@ -166,15 +159,18 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
     });
 
     // Bulk insert in batches
-    const BATCH_SIZE = 100000;
-    // const mappingsArray = Array.from(uniqueMappings.values());
+    const BATCH_SIZE = 10000;
+    const mappingsArray = Array.from(uniqueMappings.entries());
     let processed = 0;
+
     for (let i = 0; i < mappingsArray.length; i += BATCH_SIZE) {
-      const batch = mappingsArray.slice(i, i + BATCH_SIZE).map((item) => ({
-        shopDomain,
-        sku: item.sku,
-        ingramPartNumber: item.ingramPartNumber,
-      }));
+      const batch = mappingsArray
+        .slice(i, i + BATCH_SIZE)
+        .map(([sku, ingramPartNumber]) => ({
+          shopDomain,
+          sku,
+          ingramPartNumber,
+        }));
 
       await prisma.productMapping.createMany({
         data: batch,
@@ -183,6 +179,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
       processed += batch.length;
 
+      // Update progress
       await prisma.productSyncJob.update({
         where: { id: jobId },
         data: { processed },

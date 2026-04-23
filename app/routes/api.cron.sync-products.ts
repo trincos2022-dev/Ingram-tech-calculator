@@ -47,7 +47,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     // Fetch all mappings from Supabase with pagination (default limit is 1000)
     const supabase = getSupabaseClient();
-    const PAGE_SIZE = 5000;
+    const PAGE_SIZE = 10000;
     const allRows: { price_vendor_part: string; price_part_nbr: string }[] = [];
     let offset = 0;
 
@@ -55,6 +55,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const { data, error } = await supabase
         .from("final_product_table_us")
         .select("price_vendor_part,price_part_nbr")
+        .order("price_vendor_part", { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);
 
       if (error) {
