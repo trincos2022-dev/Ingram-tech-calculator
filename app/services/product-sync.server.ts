@@ -144,23 +144,15 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
       `[Product Sync] Total fetched: ${rows.length} rows from Supabase`,
     );
 
-    // Dedupe by SKU (keep first occurrence)
-    const uniqueMappings = new Map<
-      number,
-      { sku: string; ingramPartNumber: string }
-    >();
+    //mapping data
+    const mappingsArray = rows.map((row) => ({
+      shopDomain,
+      sku: row.price_vendor_part,
+      ingramPartNumber: row.price_part_nbr,
+    }));
 
-    for (const row of rows) {
-      if (!uniqueMappings.has(row.id)) {
-        uniqueMappings.set(row.id, {
-          sku: row.price_vendor_part,
-          ingramPartNumber: row.price_part_nbr,
-        });
-      }
-    }
-
-    const total = uniqueMappings.size;
-    console.log(`[Product Sync] ${total} unique SKUs after deduplication`);
+    const total = mappingsArray.length;
+    console.log(`[Product Sync] ${total} unique rows mappings`);
 
     // Update job with total count
     await prisma.productSyncJob.update({
@@ -175,7 +167,7 @@ async function runProductSyncFast(jobId: string, shopDomain: string) {
 
     // Bulk insert in batches
     const BATCH_SIZE = 100000;
-    const mappingsArray = Array.from(uniqueMappings.values());
+    // const mappingsArray = Array.from(uniqueMappings.values());
     let processed = 0;
     for (let i = 0; i < mappingsArray.length; i += BATCH_SIZE) {
       const batch = mappingsArray.slice(i, i + BATCH_SIZE).map((item) => ({
