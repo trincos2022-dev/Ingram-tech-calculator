@@ -1498,10 +1498,11 @@ export default function Index() {
                     id="fallbackDescription"
                     name="fallbackDescription"
                     value={fallbackForm.description}
-                    onChange={(event) =>
+                    onInput={(event: any) =>
                       setFallbackForm((prev) => ({
                         ...prev,
-                        description: event.currentTarget.value,
+                        description:
+                          event.target?.value || event.currentTarget?.value || "",
                       }))
                     }
                     rows={2}
