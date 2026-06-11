@@ -351,12 +351,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       `[${correlationId}] Ingram freight ${response.cacheHit ? "cache hit" : "API call"} completed in ${Date.now() - ingramStart}ms`,
     );
 
-    if (carrierShop) {
-      const freightSummary = response.response?.freightEstimateResponse ?? {};
-      const currency = freightSummary.currencyCode || carrierCurrency || "USD";
-      const distributions: IngramDistribution[] = freightSummary?.distribution ?? [];
+if (carrierShop) {
+       const freightSummary = response.response?.freightEstimateResponse ?? {};
+       const currency = freightSummary.currencyCode || carrierCurrency || "USD";
+       const distributions: IngramDistribution[] = freightSummary?.distribution ?? [];
+       const totalTaxAmount = freightSummary.totalTaxAmount || 0;
 
-      console.log(`[${correlationId}] Received ${distributions.length} distribution(s) from Ingram`);
+       console.log(`[${correlationId}] Received ${distributions.length} distribution(s) from Ingram`);
 
       // Log distribution details
       if (distributions.length > 0) {
@@ -400,8 +401,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
       }
 
-      // Combine rates across all distributions
-      const combinedRates = combineRates(distributions);
+// Combine rates across all distributions
+       const combinedRates = combineRates(distributions, totalTaxAmount);
       console.log(`[${correlationId}] Combined into ${combinedRates.length} unique carrier options`);
 
       // Log combined rate details

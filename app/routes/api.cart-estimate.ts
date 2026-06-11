@@ -382,6 +382,7 @@ async function getIngramRates(
     const currency = freightSummary.currencyCode || "USD";
     const distributions: IngramDistribution[] =
       freightSummary?.distribution ?? [];
+    const totalTaxAmount = freightSummary.totalTaxAmount || 0;
 
     if (distributions.length === 0) {
       return null;
@@ -398,7 +399,7 @@ async function getIngramRates(
     );
 
     // Combine rates across distributions
-    const combinedRates = combineRates(distributions);
+    const combinedRates = combineRates(distributions, totalTaxAmount);
 
     if (combinedRates.length === 0) {
       console.warn("[INGRAM] No combined rates after processing distributions");
@@ -600,6 +601,13 @@ function parseTechDataShippingRates(xmlResponse: string) {
   }> = [];
 
   try {
+    // Extract OtherCharges values
+    const minOrderFeeMatch = xmlResponse.match(/<MinOrderFee>([^<]+)<\/MinOrderFee>/);
+    const codFeeMatch = xmlResponse.match(/<CODFee>([^<]+)<\/CODFee>/);
+    const otherChargesTotal =
+      (parseFloat(minOrderFeeMatch?.[1] ?? "0") || 0) +
+      (parseFloat(codFeeMatch?.[1] ?? "0") || 0);
+
     // Match all AvailableShipMethod blocks in the XML
     const shipMethodRegex =
       /<AvailableShipMethod code="([^"]+)">\s*<ShipMethodDescription>([^<]+)<\/ShipMethodDescription>\s*<ServiceLevel>([^<]+)<\/ServiceLevel>\s*<Freight>([^<]+)<\/Freight>\s*<\/AvailableShipMethod>/g;
@@ -607,11 +615,13 @@ function parseTechDataShippingRates(xmlResponse: string) {
     let match;
     while ((match = shipMethodRegex.exec(xmlResponse)) !== null) {
       const [, code, description, , freight] = match;
+      const basePrice = parseFloat(freight.trim()) || 0;
+      const totalPrice = basePrice + otherChargesTotal;
 
       rates.push({
         name: description.trim(),
         code: code.trim(),
-        price: parseFloat(freight.trim()),
+        price: totalPrice,
         currency: "USD", // TD SYNNEX uses USD by default
         description: description.trim(),
       });

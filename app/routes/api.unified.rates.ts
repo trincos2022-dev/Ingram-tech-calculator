@@ -168,17 +168,26 @@ function parseTechDataShippingRates(xmlResponse: string) {
   }> = [];
 
   try {
+    // Extract OtherCharges values
+    const minOrderFeeMatch = xmlResponse.match(/<MinOrderFee>([^<]+)<\/MinOrderFee>/);
+    const codFeeMatch = xmlResponse.match(/<CODFee>([^<]+)<\/CODFee>/);
+    const otherChargesTotal =
+      (parseFloat(minOrderFeeMatch?.[1] ?? "0") || 0) +
+      (parseFloat(codFeeMatch?.[1] ?? "0") || 0);
+
     const shipMethodRegex =
       /<AvailableShipMethod code="([^"]+)">\s*<ShipMethodDescription>([^<]+)<\/ShipMethodDescription>\s*<ServiceLevel>([^<]+)<\/ServiceLevel>\s*<Freight>([^<]+)<\/Freight>\s*<\/AvailableShipMethod>/g;
 
     let match;
     while ((match = shipMethodRegex.exec(xmlResponse)) !== null) {
       const [, code, description, , freight] = match;
+      const basePrice = parseFloat(freight.trim()) || 0;
+      const totalPrice = basePrice + otherChargesTotal;
 
       rates.push({
         name: description.trim(),
         code: code.trim(),
-        price: parseFloat(freight.trim()),
+        price: totalPrice,
         currency: "USD",
         description: description.trim(),
       });
@@ -330,6 +339,7 @@ async function getIngramRates(
     const freightSummary = response.response?.freightEstimateResponse ?? {};
     const distributions: IngramDistribution[] =
       freightSummary?.distribution ?? [];
+    const totalTaxAmount = freightSummary.totalTaxAmount || 0;
 
     console.log(
       `[UNIFIED][INGRAM][${correlationId}] Received ${distributions.length} distribution(s)`,
@@ -352,8 +362,8 @@ async function getIngramRates(
       },
     );
 
-    // Combine rates across distributions
-    const combinedRates = combineRates(distributions);
+// Combine rates across distributions
+    const combinedRates = combineRates(distributions, totalTaxAmount);
     console.log(
       `[UNIFIED][INGRAM][${correlationId}] Combined into ${combinedRates.length} unique carrier options`,
     );

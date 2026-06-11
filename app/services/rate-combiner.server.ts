@@ -15,6 +15,17 @@ export type IngramCarrier = {
   carrierMode: string;
   estimatedFreightCharge: string | number;
   daysInTransit: string | number;
+  totalTaxAmount?: number; // Tax per carrier, defaults to overall tax if not present
+};
+
+export type IngramFreightEstimateResponse = {
+  currencyCode: string;
+  totalFreightAmount: number;
+  totalTaxAmount: number;
+  totalFees: number;
+  totalNetAmount: number;
+  grossAmount: number;
+  distribution: IngramDistribution[];
 };
 
 export type IngramDistribution = {
@@ -56,6 +67,7 @@ export type CombinedRate = {
  */
 export function combineRates(
   distributions: IngramDistribution[],
+  totalTaxAmount: number = 0,
 ): CombinedRate[] {
   if (!distributions || distributions.length === 0) {
     return [];
@@ -65,18 +77,19 @@ export function combineRates(
   if (distributions.length === 1) {
     const dist = distributions[0];
     const carriers = dist.carrierList ?? [];
+    const taxAmount = totalTaxAmount;
 
     return carriers
       .map((carrier) => ({
         carrierCode: carrier.carrierCode?.trim() || "",
         shipVia: carrier.shipVia?.trim() || "",
         carrierMode: carrier.carrierMode?.trim() || "",
-        totalCharge: parseFloat(String(carrier.estimatedFreightCharge)) || 0,
+        totalCharge: (parseFloat(String(carrier.estimatedFreightCharge)) || 0) + taxAmount,
         maxDaysInTransit: parseInt(String(carrier.daysInTransit), 10) || 0,
         distributions: [
           {
             branchNumber: dist.shipFromBranchNumber,
-            charge: parseFloat(String(carrier.estimatedFreightCharge)) || 0,
+            charge: (parseFloat(String(carrier.estimatedFreightCharge)) || 0) + taxAmount,
             daysInTransit: parseInt(String(carrier.daysInTransit), 10) || 0,
           },
         ],
@@ -158,6 +171,9 @@ export function combineRates(
         daysInTransit: distData.daysInTransit,
       });
     }
+
+    // Add total tax to the combined charge (only once, not per distribution)
+    totalCharge += totalTaxAmount;
 
     // Only include carriers that are available in ALL distributions
     // This ensures we don't show partial shipping options
